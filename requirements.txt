@@ -1,0 +1,6 @@
+scikit-learn
+albumentations
+matplotlib
+PyYAML
+huggingface_hub
+tensorboardX

@@ -1,0 +1,32 @@
+Bootstrap: docker
+From: vault.habana.ai/gaudi-docker/1.24.0/ubuntu22.04/habanalabs/pytorch-installer-2.10.0:latest
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=UTC
+    export PATH="/root/.local/bin:/opt/venv/bin:$PATH"
+
+    # Gaudi / Habana runtime
+    export HABANA_VISIBLE_DEVICES=all
+    export OMPI_MCA_btl_vader_single_copy_mechanism=none
+
+%files
+    requirements.txt /opt/requirements.txt
+    requirements_nodeps.txt /opt/requirements_nodeps.txt
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential gcc g++ git wget curl tmux htop rsync ca-certificates
+    rm -rf /var/lib/apt/lists/*
+
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="/root/.local/bin:$PATH"
+
+    uv venv --python 3.10 /opt/venv --system-site-packages
+    export PATH="/opt/venv/bin:$PATH"
+    uv pip install --no-cache -r /opt/requirements.txt
+    uv pip install --no-deps --no-cache -r /opt/requirements_nodeps.txt
+
+%runscript
+    exec /bin/bash "$@"

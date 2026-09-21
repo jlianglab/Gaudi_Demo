@@ -1,0 +1,19 @@
+ChestXray14: 
+  data_dir:  /path/to/chestxray14
+  train_list: /workspace/Ark_Plus/dataset/ChestXray14/Xray14_train_official.txt
+  val_list: /workspace/Ark_Plus/dataset/ChestXray14/Xray14_val_official.txt
+  test_list:  /workspace/Ark_Plus/dataset/ChestXray14/Xray14_test_official.txt
+  diseases: ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
+  task_type: multi-label classification
+
+VinDrCXR: 
+  data_dir: /path/to/vindrcxr
+  train_list: /workspace/Ark_Plus/dataset/VinDrCXR/VinDrCXR_train_pe_global_one.txt
+  val_list: /workspace/Ark_Plus/dataset/VinDrCXR/VinDrCXR_test_pe_global_one.txt
+  test_list: /workspace/Ark_Plus/dataset/VinDrCXR/VinDrCXR_test_pe_global_one.txt
+  diseases: ['PE', 'Lung tumor', 'Pneumonia', 'Tuberculosis', 'Other diseases', 'No finding']
+  task_type: multi-label classification
+
+medmnist:
+  output_root: /path/to/medmnist/output
+  data_root: /path/to/medmnist/data

@@ -1,0 +1,27 @@
+Bootstrap: docker
+From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=UTC
+    export PATH="/root/.local/bin:/opt/venv/bin:$PATH"
+
+%files
+    requirements_cuda.txt /opt/requirements_cuda.txt
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential gcc g++ git wget curl tmux htop rsync ca-certificates
+    rm -rf /var/lib/apt/lists/*
+    
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="/root/.local/bin:$PATH"
+    
+    uv venv --python 3.10 /opt/venv
+    export PATH="/opt/venv/bin:$PATH"
+    
+    uv pip install --no-cache -r /opt/requirements_cuda.txt
+    
+%runscript
+    exec /bin/bash "$@"
