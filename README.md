@@ -191,6 +191,14 @@ ChestMNIST, 224x224, ResNet50
 <td align="center">94.6306</td>
 <td align="center">29:34:31</td>
 </tr>
+
+<tr>
+<td align="center">Official</td>
+<td align="center">77.3</td>
+<td align="center">94.8</td>
+<td align="center">N/A</td>
+</tr>
+
 </tbody></table>
 
 NoduleMNIST3D, 28x28x28, ResNet50
