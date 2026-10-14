@@ -54,20 +54,37 @@ device = torch.device("hpu")
 model = torch.compile(model,backend="hpu_backend")
 ```
 
-4. Mark steps in training/evaluation loops (for Lazy mode).
+4. Move models and tensors to ```hpu``` instead of ```cuda```.
+```python
+model.to(device)
+...
+for i, (samples, targets) in enumerate(data_loader):
+  samples, targets = samples.float().to(device), targets.float().to(device)
+```
+
+5. Mark steps in training/evaluation loops (for Lazy mode).
 ```python
 import habana_frameworks.torch.core as htcore
 ...
-htcore.mark_step()
+for i, (samples, targets) in enumerate(data_loader):
+  ...
+  if lazy_mode:
+    htcore.mark_step()
 ```
 
-5. Move all tensors to cpu before saving to disk.
+6. If using mixed precision, use ```bfloat16``` instead of ```fp16```. ```GradScaler``` is not needed when using ```bfloat16```.
+```python
+with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=True):
+  output = model(samples)
+```
+
+7. Move all tensors to ```cpu``` before saving to disk.
 ```python
 cpu_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
 cpu_teacher_state = {k: v.cpu() for k, v in teacher.state_dict().items()}
 ```
 
-6. Use Habana Collective Communications Library (HCCL) for distributed training.
+8. Use Habana Collective Communications Library (HCCL) for distributed training.
 ```python
 from habana_frameworks.torch.distributed.hccl import initialize_distributed_hpu
 args.world_size, args.rank, args.local_rank = initialize_distributed_hpu()
@@ -235,18 +252,22 @@ Here are the issues and limitations I have encountered:
 
 2) Lazy mode may require more memory to account for the compiled graphs.
 
-3) Gaudi's ```torch.compile``` currently does not support many operations, despite being Intel's preferred execution mode. As a result, many scripts cannot use this execution mode. 
+3) Operations not supported by Gaudi will fall back to CPU, which may affect performance.
 
-4) ```synStatus=8 [Device not found]``` When interrupted, Gaudi processes may not exit gracefully. To run a script afterwards, you must kill the processes manually (use hl-smi to find process IDs).
+4) Gaudi's ```torch.compile``` currently does not support many operations, despite being Intel's preferred execution mode. As a result, many scripts cannot use this execution mode. 
 
-5) ```torchrun``` is not implemented in Gaudi. Use ```python -m torch.distributed.run``` instead.
+5) ```synStatus=8 [Device not found]```: When interrupted, Gaudi processes may not exit gracefully. To run a script afterwards, you must kill the processes manually (use hl-smi to find process IDs).
 
-6) Do not use the ```device_ids``` parameter with DistributedDataParallel models, as initialization with HPU differs from torch/cuda.
+6) ```torchrun``` is not implemented in Gaudi. Use ```python -m torch.distributed.run``` instead.
 
-7) Gaudi doesn’t support ```SyncBatchNorm```, which is currently strictly a GPU operation. This may lead to degraded performance when performing multi-HPU training with small batch sizes. Use larger batch sizes if possible, or switch to transformer models that do not use batch norm.
+7) Do not use the ```device_ids``` parameter with DistributedDataParallel models, as initialization with HPU differs from torch/cuda.
 
-8) Gaudi seems to be less memory-efficient when processing 3D data. However, more experimentation is required to confirm this.
+8) When using mixed precision, torch casts operations to certain data types (lower vs higher precision. These data types differ when using Gaudi compared to NVIDIA chips. The default data types for Gaudi are provided in the [documentation](https://docs.habana.ai/en/latest/PyTorch/PyTorch_Mixed_Precision/index.html#registered-operators). 
+
+9) Gaudi doesn’t support ```SyncBatchNorm```, which is currently strictly a GPU operation. This may lead to degraded performance when performing multi-HPU training with small batch sizes. Use larger batch sizes if possible, or switch to transformer models that do not use batch norm.
+
+10) Gaudi seems less memory-efficient when processing 3D data. However, more experimentation is required to confirm this.
 
 ## Acknowledgements
 
-The base code was cloned from the official Ark, BenchmarkTransformers, and MedMNIST repositories: [Ark](https://github.com/jlianglab/Ark/tree/main), [BenchmarkTransformers](https://github.com/jlianglab/BenchmarkTransformers/tree/main), [MedMNIST Library](https://github.com/MedMNIST/MedMNIST), and [MedMNIST Experiments](https://github.com/MedMNIST/experiments). I adapted the code to run on Gaudi. The Apptainer scripts were adapted from Jae Yul Shin's code. Special thanks to the ASU Research Computing team for help with using and debugging the Gaudi HPUs, Benjamin Malamuth for discovering degraded metric performance with Eager mode, and Prof. Jianming Liang for guidance on experiments. This work utilized NVIDIA GPUs and Intel Gaudi2 HPUs provided by ASU Research Computing through the Sol Supercomputer.
+The base code was cloned from the official Ark, BenchmarkTransformers, and MedMNIST repositories: [Ark](https://github.com/jlianglab/Ark/tree/main), [BenchmarkTransformers](https://github.com/jlianglab/BenchmarkTransformers/tree/main), [MedMNIST Library](https://github.com/MedMNIST/MedMNIST), and [MedMNIST Experiments](https://github.com/MedMNIST/experiments). I adapted the code to run on Gaudi. Necessary changes were applied from the official [Gaudi documentation](https://docs.habana.ai/en/latest/PyTorch/index.html) and from [Habana Labs' reference repository](https://github.com/HabanaAI/Model-References/tree/master/PyTorch/computer_vision/classification/torchvision). The Apptainer scripts were adapted from Jae Yul Shin's code. Special thanks to the ASU Research Computing team for help with using and debugging the Gaudi HPUs, Benjamin Malamuth for discovering degraded metric performance with Eager mode, and Prof. Jianming Liang for guidance on experiments. This work utilized NVIDIA GPUs and Intel Gaudi2 HPUs provided by ASU Research Computing through the Sol Supercomputer.
