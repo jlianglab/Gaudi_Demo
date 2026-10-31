@@ -165,7 +165,7 @@ BenchmarkTransferLearning, Swin-B
 <th valign="bottom">AUC</th>
 
 <tr>
-<td rowspan = "4" align="center">Gaudi (Lazy)</td>
+<td rowspan = "5" align="center">Gaudi (Lazy)</td>
 <td align="center">NIHCXR14</td>
 <td align="center">81.30 ± 0.16</td>
 </tr>
