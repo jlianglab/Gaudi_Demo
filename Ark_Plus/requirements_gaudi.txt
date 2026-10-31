@@ -1,0 +1,4 @@
+scikit-learn==1.7.2
+albumentations==2.0.8
+matplotlib==3.10.9
+PyYAML==6.0.3

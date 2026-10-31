@@ -3,24 +3,97 @@ set -euo pipefail
 
 WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Configuration
-IMAGE_NAME="cuda-apptainer.sif"
-DEF_FILE="$WORKSPACE_DIR/cuda-apptainer.def"
+# Configuration (can be overridden via env vars or CLI flags)
+IMAGE_NAME="${IMAGE_NAME:-cuda-apptainer.sif}"
+DEF_FILE="${DEF_FILE:-$WORKSPACE_DIR/cuda-apptainer.def}"
 
 # Help menu
 show_help() {
-    echo "Usage: ./apptainer.sh [COMMAND] [ARGS]"
+    echo "Usage: ./cuda-apptainer.sh [OPTIONS] COMMAND [ARGS]"
     echo ""
     echo "Commands:"
     echo "  build         Build the Apptainer image (.sif file)"
     echo "  run           Run an interactive shell inside the container"
-    echo "  exec [cmd]    Execute a command inside the container (e.g., ./apptainer.sh exec ./run-xray14-resnet50-best.local.sh)"
+    echo "  exec [cmd]    Execute a command inside the container (e.g., ./cuda-apptainer.sh exec ./run-xray14-resnet50-best.local.sh)"
+    echo ""
+    echo "Options:"
+    echo "  -i, --image NAME   Image (.sif) filename, stored in the script directory (default: cuda-apptainer.sif)"
+    echo "  -d, --def FILE     Definition file used by 'build' (default: cuda-apptainer.def)"
+    echo "  -h, --help         Show this help message"
     echo ""
     echo "Examples:"
-    echo "  ./apptainer.sh build"
-    echo "  ./apptainer.sh run"
-    echo "  ./apptainer.sh exec python src/train_v1_classic.py dataset=chestxray14"
+    echo "  ./cuda-apptainer.sh build"
+    echo "  ./cuda-apptainer.sh -i my-image.sif build"
+    echo "  ./cuda-apptainer.sh -i my-image.sif run"
+    echo "  ./cuda-apptainer.sh -i my-image.sif exec python src/train_v1_classic.py dataset=chestxray14"
+    echo "  IMAGE_NAME=my-image.sif ./cuda-apptainer.sh run"
+    echo ""
+    echo "Environment variables:"
+    echo "  IMAGE_NAME      Image (.sif) filename (overridden by -i/--image)"
+    echo "  DEF_FILE        Definition file path (overridden by -d/--def)"
+    echo "  HF_HOME         Path to Hugging Face cache (optional)"
+    echo "  SSL_CERT_FILE   Path to SSL certificate bundle (optional)"
+    echo "  EXTRA_MOUNTS    Space-separated list of extra bind mounts (optional)"
 }
+
+# ---- Parse options (must come before the command) ----
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -i|--image)
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: $1 requires a value."
+                exit 1
+            fi
+            IMAGE_NAME="$2"
+            shift 2
+            ;;
+        --image=*)
+            IMAGE_NAME="${1#*=}"
+            shift
+            ;;
+        -d|--def)
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: $1 requires a value."
+                exit 1
+            fi
+            DEF_FILE="$2"
+            shift 2
+            ;;
+        --def=*)
+            DEF_FILE="${1#*=}"
+            shift
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Image is always stored in the workspace directory; only a filename is allowed.
+if [[ "$IMAGE_NAME" == */* ]]; then
+    echo "Error: image name must be a filename only (no '/'); images are stored in $WORKSPACE_DIR."
+    exit 1
+fi
+IMAGE_PATH="$WORKSPACE_DIR/$IMAGE_NAME"
+
+# Def file: absolute paths are used as-is, relative ones resolve to the workspace
+case "$DEF_FILE" in
+    /*) ;;
+    *)  DEF_FILE="$WORKSPACE_DIR/$DEF_FILE" ;;
+esac
 
 if ! command -v apptainer &> /dev/null; then
     echo "Error: apptainer could not be found."
@@ -68,33 +141,37 @@ fi
 
 case "$cmd" in
     build)
-        echo "Building Apptainer image '${IMAGE_NAME}'..."
+        if [ ! -f "$DEF_FILE" ]; then
+            echo "Error: Definition file '$DEF_FILE' not found."
+            exit 1
+        fi
+        echo "Building Apptainer image '${IMAGE_PATH}' from '${DEF_FILE}'..."
         export APPTAINER_TMPDIR="${SCRATCH:-$HOME}/.apptainer/tmp"
         export APPTAINER_CACHEDIR="${SCRATCH:-$HOME}/.apptainer/cache"
         mkdir -p "$APPTAINER_TMPDIR" "$APPTAINER_CACHEDIR"
-        
+
         # Requires fakeroot to install system packages as root within container during build
-        apptainer build --fakeroot "$WORKSPACE_DIR/$IMAGE_NAME" $DEF_FILE
+        apptainer build --fakeroot "$IMAGE_PATH" "$DEF_FILE"
         ;;
     run)
-        if [ ! -f "$WORKSPACE_DIR/$IMAGE_NAME" ]; then
-            echo "Error: Image '$IMAGE_NAME' not found. Run './apptainer-for-cuda.sh build' first."
+        if [ ! -f "$IMAGE_PATH" ]; then
+            echo "Error: Image '$IMAGE_PATH' not found. Run './cuda-apptainer.sh -i $IMAGE_NAME build' first."
             exit 1
         fi
-        echo "Starting an interactive shell in the Apptainer container..."
-        apptainer shell $GPU_FLAG "${ENV_FLAGS[@]}" "${BINDS[@]}" --bind "$WORKSPACE_DIR:/workspace" --pwd /workspace "$WORKSPACE_DIR/$IMAGE_NAME"
+        echo "Starting an interactive shell in container '${IMAGE_PATH}'..."
+        apptainer shell $GPU_FLAG "${ENV_FLAGS[@]}" "${BINDS[@]}" --bind "$WORKSPACE_DIR:/workspace" --pwd /workspace "$IMAGE_PATH"
         ;;
     exec)
         if [ $# -eq 0 ]; then
             echo "Error: No command provided to execute."
             exit 1
         fi
-        if [ ! -f "$WORKSPACE_DIR/$IMAGE_NAME" ]; then
-            echo "Error: Image '$IMAGE_NAME' not found. Run './apptainer-for-cuda.sh build' first."
+        if [ ! -f "$IMAGE_PATH" ]; then
+            echo "Error: Image '$IMAGE_PATH' not found. Run './cuda-apptainer.sh -i $IMAGE_NAME build' first."
             exit 1
         fi
-        echo "Executing command in container: $@"
-        apptainer exec $GPU_FLAG "${ENV_FLAGS[@]}" "${BINDS[@]}" --bind "$WORKSPACE_DIR:/workspace" --pwd /workspace "$WORKSPACE_DIR/$IMAGE_NAME" "$@"
+        echo "Executing command in container '${IMAGE_PATH}': $*"
+        apptainer exec $GPU_FLAG "${ENV_FLAGS[@]}" "${BINDS[@]}" --bind "$WORKSPACE_DIR:/workspace" --pwd /workspace "$IMAGE_PATH" "$@"
         ;;
     help|--help|-h)
         show_help

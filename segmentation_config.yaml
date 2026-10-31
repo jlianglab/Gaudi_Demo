@@ -1,0 +1,29 @@
+SCR-Heart:
+  train_data_dir: <PATH_TO_DATASET>
+  valid_data_dir: <PATH_TO_DATASET>
+  test_data_dir: <PATH_TO_DATASET>
+  train_mask_dir: <PATH_TO_MASKS>
+  valid_mask_dir: <PATH_TO_MASKS>
+  test_mask_dir: <PATH_TO_MASKS>
+  train_file_path: /workspace/BenchmarkTransferLearning/dataset/jsrt_train.txt
+  valid_file_path: /workspace/BenchmarkTransferLearning/dataset/jsrt_valid.txt
+  test_file_path: /workspace/BenchmarkTransferLearning/dataset/jsrt_test.txt
+
+SCR-Clavicle:
+  train_data_dir: <PATH_TO_DATASET>
+  valid_data_dir: <PATH_TO_DATASET>
+  test_data_dir: <PATH_TO_DATASET>
+  train_mask_dir: <PATH_TO_MASKS>
+  valid_mask_dir: <PATH_TO_MASKS>
+  test_mask_dir: <PATH_TO_MASKS>
+  train_file_path: /workspace/BenchmarkTransferLearning/dataset/jsrt_train.txt
+  valid_file_path: /workspace/BenchmarkTransferLearning/dataset/jsrt_valid.txt
+  test_file_path: /workspace/BenchmarkTransferLearning/dataset/jsrt_test.txt
+
+SIIM_PNE:
+  train_data_dir: <PATH_TO_DATASET>
+  valid_data_dir: <PATH_TO_DATASET>
+  test_data_dir: <PATH_TO_DATASET>
+  train_mask_dir: <PATH_TO_MASKS>
+  valid_mask_dir: <PATH_TO_MASKS>
+  test_mask_dir: <PATH_TO_MASKS>

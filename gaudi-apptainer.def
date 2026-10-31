@@ -12,8 +12,8 @@ From: vault.habana.ai/gaudi-docker/1.24.0/ubuntu22.04/habanalabs/pytorch-install
     export OMPI_MCA_btl_vader_single_copy_mechanism=none
 
 %files
-    requirements.txt /opt/requirements.txt
-    requirements_nodeps.txt /opt/requirements_nodeps.txt
+    <directory>/requirements_gaudi.txt /opt/requirements_gaudi.txt
+    <directory>/requirements_gaudi_nodeps.txt /opt/requirements_gaudi_nodeps.txt
 
 %post
     apt-get update && apt-get install -y --no-install-recommends \
@@ -25,8 +25,8 @@ From: vault.habana.ai/gaudi-docker/1.24.0/ubuntu22.04/habanalabs/pytorch-install
 
     uv venv --python 3.10 /opt/venv --system-site-packages
     export PATH="/opt/venv/bin:$PATH"
-    uv pip install --no-cache -r /opt/requirements.txt
-    uv pip install --no-deps --no-cache -r /opt/requirements_nodeps.txt
+    uv pip install --no-cache -r /opt/requirements_gaudi.txt
+    uv pip install --no-deps --no-cache -r /opt/requirements_gaudi_nodeps.txt
 
 %runscript
     exec /bin/bash "$@"

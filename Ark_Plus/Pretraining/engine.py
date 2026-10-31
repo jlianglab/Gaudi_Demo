@@ -35,10 +35,19 @@ except:
 
 sys.setrecursionlimit(40000)
 
+def worker_init_fn(worker_id):
+    seed = torch.initial_seed() % 2**32
+    ds = torch.utils.data.get_worker_info().dataset
+    tf = getattr(ds, "train_augment", None)
+    if tf is not None and hasattr(tf, "set_random_seed"):
+        tf.set_random_seed(seed)
+
 def omni_engine(args, model_path, output_path, dataset_list, datasets_config, dataset_train_list, dataset_val_list, dataset_test_list):
     init_distributed_mode(args)
     device = torch.device(args.device)
-    cudnn.benchmark = True
+
+    if args.device == 'cuda':
+        cudnn.benchmark = True
     
     # logs
     exp = 'Ark_Plus'
@@ -61,10 +70,10 @@ def omni_engine(args, model_path, output_path, dataset_list, datasets_config, da
         if args.distributed:
             train_sampler = torch.utils.data.DistributedSampler(d, shuffle=True)
             data_loader_list_train.append(DataLoader(dataset=d, sampler=train_sampler, batch_size=args.batch_size,
-                                            num_workers=args.workers, pin_memory=True, drop_last=True))
+                                            num_workers=args.workers, pin_memory=True, drop_last=True, worker_init_fn=worker_init_fn))
         else:
             data_loader_list_train.append(DataLoader(dataset=d, batch_size=args.batch_size, shuffle=True,
-                                            num_workers=args.workers, pin_memory=True))
+                                            num_workers=args.workers, pin_memory=True, worker_init_fn=worker_init_fn))
     data_loader_list_val = []
     for dv in dataset_val_list:
         if args.distributed:

@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+torchvision==0.21.0
+timm==0.5.4
+scikit-learn==1.7.2
+albumentations==2.0.8
+matplotlib==3.10.9
+PyYAML==6.0.3
+tqdm==4.70.1
+scipy==1.15.3

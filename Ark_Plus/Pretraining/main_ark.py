@@ -122,7 +122,7 @@ def main(args):
     model_path = os.path.join(args.output_dir,'Models',exp_name)
     output_path = os.path.join(args.output_dir,'Outputs',exp_name)
 
-    datasets_config = get_config('/workspace/config.yaml')
+    datasets_config = get_config('/workspace/classification_config.yaml')
     for dataset in args.dataset_list:
         assert dataset in list(datasets_config.keys())
 

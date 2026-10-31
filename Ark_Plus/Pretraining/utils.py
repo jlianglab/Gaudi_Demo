@@ -7,58 +7,76 @@ from scipy import interpolate
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch.distributed as dist
+from matplotlib.lines import Line2D
 
-def plot(auc_dict, cycles, dataset_list, output_path):
-    
+def plot(auc_dict, dataset_list, output_path):
     for order, dataset in enumerate(dataset_list):
-        plt.figure(figsize=(10, 6))
-        
-        plt.plot(cycles, auc_dict[dataset]['student'][len(dataset_list)-1::len(dataset_list)], label='Student', marker='o', markersize=3)
-        plt.plot(cycles, auc_dict[dataset]['teacher'][len(dataset_list)-1::len(dataset_list)], label='Teacher', marker='s', markersize=3)
-        
-        plt.xlabel('Cycle')
-        plt.ylabel('AUC')
-        plt.title('Ark %s Test AUC' % (dataset))
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        
-        plt.savefig(os.path.join(output_path, f'{dataset}_student_teacher.png'), dpi=150)
-        
-        plt.close()
-        
-        plt.figure(figsize=(10, 6))
-        
         n = len(dataset_list)
-        
-        cycles_focused = np.arange(1*(order+1)/n, len(cycles)+1/n, 1)
-        focused_y = np.array(auc_dict[dataset]['student'][order::n])
-        
-        cycles_unfocused = np.arange(1/n, len(cycles)+1/n, 1/n)
-        unfocused_y = np.array(auc_dict[dataset]['student'])
-        
+
+        student_y = np.array(auc_dict[dataset]['student'])
+        teacher_y = np.array(auc_dict[dataset]['teacher'])
+
+        # x position of every point: 1/n, 2/n, 3/n, ... (exact length, no arange with float steps)
+        x_all = np.arange(1, len(student_y) + 1) / n
+        focused_mask = (np.arange(len(student_y)) % n) == order
+
+        # ---------- Plot 1: student vs teacher, all points ----------
+        plt.figure(figsize=(10, 6))
+
+        for y, label, color in [(student_y, 'Student', 'tab:blue'),
+                                (teacher_y, 'Teacher', 'tab:orange')]:
+            # connecting line
+            plt.plot(x_all, y, color=color, label=label, linestyle='-', linewidth=1.5)
+            # focused training points: dots
+            plt.scatter(x_all[focused_mask], y[focused_mask],
+                        marker='o', s=20, color=color, zorder=3)
+            # unfocused training points: x's
+            plt.scatter(x_all[~focused_mask], y[~focused_mask],
+                        marker='x', s=20, color=color, zorder=3)
+
+        # legend: series colors + marker meaning
+        handles, labels = plt.gca().get_legend_handles_labels()
+        handles += [
+            Line2D([0], [0], marker='o', color='gray', linestyle='None', markersize=5),
+            Line2D([0], [0], marker='x', color='gray', linestyle='None', markersize=5),
+        ]
+        labels += ['Focused training', 'Unfocused training']
+        plt.legend(handles, labels)
+
+        plt.xlabel('Cycle')
+        plt.ylabel('AUC')
+        plt.title('Ark %s Test AUC' % (dataset))
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        plt.savefig(os.path.join(output_path, f'{dataset}_student_teacher.png'), dpi=150)
+        plt.close()
+
+        # ---------- Plot 2: focused vs unfocused training ----------
+        plt.figure(figsize=(10, 6))
+
         color = 'tab:blue'
-        
+
+        focused_y = student_y[order::n]
+        cycles_focused = x_all[order::n]
+
         plt.plot(cycles_focused, focused_y, label="Focused Training", linestyle='-', color=color)
-        plt.plot(cycles_unfocused, unfocused_y, label="Unfocused Training", linestyle='-', color=color, alpha=0.5)
-        
-        focused_mask = (np.arange(len(cycles_unfocused)) % n) == order
-        
-        plt.scatter(cycles_unfocused[focused_mask], unfocused_y[focused_mask],
+        plt.plot(x_all, student_y, label="Unfocused Training", linestyle='-', color=color, alpha=0.5)
+
+        plt.scatter(x_all[focused_mask], student_y[focused_mask],
                     s=20, facecolors=color, edgecolors=color, zorder=3, alpha=1.0)
-        
-        plt.scatter(cycles_unfocused[~focused_mask], unfocused_y[~focused_mask],
+
+        plt.scatter(x_all[~focused_mask], student_y[~focused_mask],
                     s=20, facecolors='none', edgecolors=color, zorder=3, alpha=0.5)
-        
+
         plt.xlabel('Cycle')
         plt.ylabel('AUC')
         plt.title('Ark %s Test AUC' % (dataset))
         plt.legend()
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        
+
         plt.savefig(os.path.join(output_path, f'{dataset}_student_focus.png'), dpi=150)
-        
         plt.close()
     
 def get_config(config):

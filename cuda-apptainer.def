@@ -8,7 +8,7 @@ From: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
     export PATH="/root/.local/bin:/opt/venv/bin:$PATH"
 
 %files
-    requirements_cuda.txt /opt/requirements_cuda.txt
+    <directory>/requirements_cuda.txt /opt/requirements_cuda.txt
 
 %post
     apt-get update && apt-get install -y --no-install-recommends \

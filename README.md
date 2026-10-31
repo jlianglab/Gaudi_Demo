@@ -18,13 +18,15 @@ cd Gaudi_Demo
 Run the commands manually or submit a batch job.
 
 ```bash
-./gaudi-apptainer.sh build
-./cuda-apptainer.sh build
+./gaudi-apptainer.sh -i <image_name.sif> -d <def_file.def> build
+./cuda-apptainer.sh -i <image_name.sif> -d <def_file.def> build
 -------------------------
 sbatch build.sh
 ```
 
-The bash files handles the installation using definition files (```gaudi-apptainer.def```, ```cuda-apptainer.def```) and package requirements (```requirements.txt```, ```requirements_nodeps.txt```, ```requirements_cuda.txt```). Running the ```build``` command will create the Apptainer images (```gaudi-apptainer.sif```, ```cuda-apptainer.sif```).
+The bash files handles the installation using definition files (```gaudi-apptainer.def```, ```cuda-apptainer.def```) and package requirements (```requirements.txt```, ```requirements_nodeps.txt```, ```requirements_cuda.txt```). Running the ```build``` command will create the Apptainer images (```gaudi-apptainer.sif```, ```cuda-apptainer.sif```). 
+
+Each repository folder provides the necessary package lists. Before building an image, make sure the definition file pulls the proper package list. You can change the Apptainer image name and the definition file used to create that image using the ```-i``` and ```-d``` commands.
 
 3. Install custom packages (Optional):
 
@@ -72,7 +74,7 @@ for i, (samples, targets) in enumerate(data_loader):
     htcore.mark_step()
 ```
 
-6. If using mixed precision, use ```bfloat16``` instead of ```fp16```. ```GradScaler``` is not needed when using ```bfloat16```.
+6. If using mixed precision (e.g., segmentation), use ```bfloat16``` instead of ```fp16```. ```GradScaler``` is not needed when using ```bfloat16```.
 ```python
 with torch.autocast(device_type='hpu', dtype=torch.bfloat16, enabled=True):
   output = model(samples)
@@ -98,9 +100,9 @@ Gaudi provides two execution modes: Eager and Lazy. Eager mode (default) execute
 
 **[ALWAYS USE Lazy MODE] Although Lazy mode is deprecated, based on personal testing, Eager mode may lead to significant underperformance in metrics.** 
 
-4 different code repositories are provided as a demo: Ark_Plus, BenchmarkTransformers, MedMNIST (2D), and MedMNIST (3D). BenchmarkTransformers only contains NIHCXR14, and it only supports distributed training (you can still use a single HPU).
+4 different code repositories are provided as a demo: Ark_Plus, BenchmarkTransferLearning, MedMNIST (2D), and MedMNIST (3D).
 
-Example bash scripts are provided in the ```scripts``` directory. Modify data and output paths in the scripts and in ```config.yaml```. You can run each program by submitting a job or running the commands in an interactive session (```./apptainer.sh run```).
+Run ```./apptainer.sh run``` to start an interactive session, or run ```./apptainer.sh exec <command>``` to execute a command within the container. Example bash scripts, which can be submitted as jobs, are provided in the ```scripts``` directory. Modify data and output paths in the scripts and in ```classification_config.yaml``` and ```segmentation_config.yaml```.
 
 To use Gaudi HPUs, set ```args.device``` to ```hpu``` and use ```./gaudi-apptainer.sh``` 
 
@@ -128,49 +130,65 @@ Ark+, Cyclic Training with VinDrCXR + NIHCXR14
   <tbody>
     <tr>
       <td>Gaudi (Lazy)</td>
-      <td>0.9412</td>
-      <td>0.9347</td>
-      <td>0.7980</td>
-      <td>0.7952</td>
+      <td>94.12</td>
+      <td>93.47</td>
+      <td>79.80</td>
+      <td>79.52</td>
     </tr>
     <tr>
       <td>Gaudi (Eager)</td>
-      <td>0.8482</td>
-      <td>0.8399</td>
-      <td>0.7019</td>
-      <td>0.6862</td>
+      <td>84.82</td>
+      <td>83.99</td>
+      <td>70.19</td>
+      <td>68.62</td>
     </tr>
     <tr>
       <td>Gaudi (Lazy + DDP)</td>
-      <td>0.9433</td>
-      <td>0.9384</td>
-      <td>0.7998</td>
-      <td>0.7967</td>
+      <td>94.33</td>
+      <td>93.84</td>
+      <td>79.98</td>
+      <td>79.67</td>
     </tr>
     <tr>
       <td>Official</td>
-      <td colspan="2" align="center">0.9414</td>
-      <td colspan="2" align="center">0.7989</td>
+      <td colspan="2" align="center">94.14</td>
+      <td colspan="2" align="center">79.89</td>
     </tr>
   </tbody>
 </table>
 
-BenchmarkTransformers, NIHCXR14, Swin-B
+BenchmarkTransferLearning, Swin-B
 
 <table><tbody>
 <th valign="bottom">Compute Mode</th>
+<th valign="bottom">Dataset</th>
 <th valign="bottom">AUC</th>
 
 <tr>
-<td align="center">Gaudi (Lazy)</td>
-<td align="center">0.8162</td>
+<td rowspan = "4" align="center">Gaudi (Lazy)</td>
+<td align="center">NIHCXR14</td>
+<td align="center">81.30 ± 0.16</td>
 </tr>
 
 <tr>
-<td align="center">Official</td>
-<td align="center">0.8173</td>
+<td align="center">VinDrCXR</td>
+<td align="center">90.63 ± 0.37</td>
 </tr>
 
+<tr>
+<td align="center">SCR-Heart</td>
+<td align="center">94.42 ± 0.19</td>
+</tr>
+
+<tr>
+<td align="center">SCR-Clavicle</td>
+<td align="center">86.64 ± 0.60</td>
+</tr>
+
+<tr>
+<td align="center">VinDrCXR</td>
+<td align="center">72.14 ± 0.20</td>
+</tr>
 </tbody></table>
 
 ChestMNIST, 224x224, ResNet50 
@@ -183,29 +201,29 @@ ChestMNIST, 224x224, ResNet50
 
 <tr>
 <td align="center">Gaudi (Eager/Compile)</td>
-<td align="center">77.4626</td>
-<td align="center">94.7242</td>
+<td align="center">77.4626 ± 0.5558</td>
+<td align="center">94.7242 ± 0.0159</td>
 <td align="center">18:38:16</td>
 </tr>
 
 <tr>
 <td align="center">Gaudi (Eager/No Compile)</td>
-<td align="center">77.3181</td>
-<td align="center">94.7361</td>
+<td align="center">77.3181 ± 0.4341</td>
+<td align="center">94.7361 ± 0.0395</td>
 <td align="center">23:45:05</td>
 </tr>
 
 <tr>
 <td align="center">Gaudi (Lazy)</td>
-<td align="center">77.2099</td>
-<td align="center">94.7066</td>
+<td align="center">77.2099 ± 0.3453</td>
+<td align="center">94.7066 ± 0.0959</td>
 <td align="center">17:17:03</td>
 </tr>
 
 <tr>
 <td align="center">NVIDIA A100</td>
-<td align="center">77.6912</td>
-<td align="center">94.6306</td>
+<td align="center">77.6912 ± 0.1632</td>
+<td align="center">94.6306 ± 0.0369</td>
 <td align="center">29:34:31</td>
 </tr>
 
@@ -227,8 +245,8 @@ NoduleMNIST3D, 28x28x28, ResNet50
 
 <tr>
 <td align="center">Gaudi (Lazy)</td>
-<td align="center">0.881</td>
-<td align="center">0.847</td>
+<td align="center">0.881 ± 0.4497</td>
+<td align="center">0.847 ± 0.7930</td>
 </tr>
 
 <tr>
@@ -270,4 +288,4 @@ Here are the issues and limitations I have encountered:
 
 ## Acknowledgements
 
-The base code was cloned from the official Ark, BenchmarkTransformers, and MedMNIST repositories: [Ark](https://github.com/jlianglab/Ark/tree/main), [BenchmarkTransformers](https://github.com/jlianglab/BenchmarkTransformers/tree/main), [MedMNIST Library](https://github.com/MedMNIST/MedMNIST), and [MedMNIST Experiments](https://github.com/MedMNIST/experiments). I adapted the code to run on Gaudi. Necessary changes were applied from the official [Gaudi documentation](https://docs.habana.ai/en/latest/PyTorch/index.html) and from [Habana Labs' reference repository](https://github.com/HabanaAI/Model-References/tree/master/PyTorch/computer_vision/classification/torchvision). The Apptainer scripts were adapted from Jae Yul Shin's code. Special thanks to the ASU Research Computing team for help with using and debugging the Gaudi HPUs, Benjamin Malamuth for discovering degraded metric performance with Eager mode, and Prof. Jianming Liang for guidance on experiments. This work utilized NVIDIA GPUs and Intel Gaudi2 HPUs provided by ASU Research Computing through the Sol Supercomputer.
+The base code was cloned from the official Ark, BenchmarkTransferLearning, and MedMNIST repositories: [Ark](https://github.com/jlianglab/Ark/tree/main), [BenchmarkTransferLearning](https://github.com/MR-HosseinzadehTaher/BenchmarkTransferLearning/tree/main), [MedMNIST Library](https://github.com/MedMNIST/MedMNIST), and [MedMNIST Experiments](https://github.com/MedMNIST/experiments). I utilize implementations of Swin Transformer and U-Net from official repositories: [Swin Transformer](https://github.com/microsoft/Swin-Transformer) and [segmentation_models.pytorch](https://github.com/qubvel-org/segmentation_models.pytorch) I adapted the code to run on Gaudi. Necessary changes were applied from the official [Gaudi documentation](https://docs.habana.ai/en/latest/PyTorch/index.html) and from [Habana Labs' reference repository](https://github.com/HabanaAI/Model-References/tree/master/PyTorch/computer_vision/classification/torchvision). The Apptainer scripts were adapted from Jae Yul Shin's code. Special thanks to the ASU Research Computing team for help with using and debugging the Gaudi HPUs, Benjamin Malamuth for discovering degraded metric performance with Eager mode, and Prof. Jianming Liang for guidance on experiments. This work utilized NVIDIA GPUs and Intel Gaudi2 HPUs provided by ASU Research Computing through the Sol Supercomputer.
