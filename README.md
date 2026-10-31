@@ -186,7 +186,7 @@ BenchmarkTransferLearning, Swin-B
 </tr>
 
 <tr>
-<td align="center">VinDrCXR</td>
+<td align="center">SIIM-ACR</td>
 <td align="center">72.14 ± 0.20</td>
 </tr>
 </tbody></table>
