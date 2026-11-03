@@ -162,7 +162,7 @@ BenchmarkTransferLearning, Swin-B
 <table><tbody>
 <th valign="bottom">Compute Mode</th>
 <th valign="bottom">Dataset</th>
-<th valign="bottom">AUC</th>
+<th valign="bottom">AUC/Dice</th>
 
 <tr>
 <td rowspan = "5" align="center">Gaudi (Lazy)</td>
